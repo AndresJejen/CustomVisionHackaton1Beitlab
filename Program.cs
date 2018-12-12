@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace CSPredictionSample
 {
@@ -40,12 +41,41 @@ namespace CSPredictionSample
 
             // Request body. Try this sample with a locally stored image.
             byte[] byteData = GetImageAsByteArray(imageFilePath);
-
-            using (var content = new ByteArrayContent(byteData))
+            try
             {
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                response = await client.PostAsync(url, content);
-                Console.WriteLine(await response.Content.ReadAsStringAsync());
+                using (var content = new ByteArrayContent(byteData))
+                {
+                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                    response = await client.PostAsync(url, content);
+                    var result = await response.Content.ReadAsStringAsync();
+                    JObject json = JObject.Parse(result);
+
+                    int prediccionnes = ((JArray)json["predictions"]).Count;
+
+                    ////// Loop over each prediction and write out the results
+                    //foreach (var c in json.Predictions)
+                    //{
+                    //    Console.WriteLine($"\t{c.TagName}: {c.Probability:P1} [ {c.BoundingBox.Left}, {c.BoundingBox.Top}, {c.BoundingBox.Width}, {c.BoundingBox.Height} ]");
+                    //}
+
+                    for (int i = 0; i < prediccionnes; i++)
+                    {
+                        if ((double)json["predictions"][i]["probability"] > 0.4)
+                        {
+                            Console.WriteLine("La predicción N° " + i);
+                            Console.WriteLine("Probabilidad: "+ (string)json["predictions"][i]["probability"]);
+                            Console.WriteLine("Left: " + (string)json["predictions"][i]["boundingBox"]["left"]);
+                            Console.WriteLine("Top: " + (string)json["predictions"][i]["boundingBox"]["top"]);
+                            Console.WriteLine("Width: " + (string)json["predictions"][i]["boundingBox"]["width"]);
+                            Console.WriteLine("height: " + (string)json["predictions"][i]["boundingBox"]["height"]);
+                        } 
+                    }
+
+                    
+                }
+            }
+            catch (Exception error) {
+                Console.WriteLine(error.Message);
             }
         }
     }
